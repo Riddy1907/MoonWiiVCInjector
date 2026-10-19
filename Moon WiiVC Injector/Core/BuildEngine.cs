@@ -30,6 +30,8 @@ public class BuildOptions
 
     public bool Wiimmfi { get; set; }
     public bool WiiVMC { get; set; }
+    public DeflickerMode DeflickerMode { get; set; } = DeflickerMode.Keep;
+    public bool RemoveDithering { get; set; }
     public bool DisableTrimming { get; set; }
     public bool DisableNintendontAutoboot { get; set; }
     public bool C2WPatch { get; set; }
@@ -434,6 +436,17 @@ public class BuildEngine(BuildOptions options, IProgress<(string Message, double
                         DolPatcher.PatchClassicController(mainDolPath);
                     }
 
+                    if (_options.DeflickerMode != DeflickerMode.Keep || _options.RemoveDithering)
+                    {
+                        UpdateStatus("Patching game main.dol video output (deflicker/dithering)...", 31);
+                        string mainDolPath = Path.Combine(isoExtractDir, "sys", "main.dol");
+                        string? gameId = WiiVideoPatcher.ReadGameId(isoExtractDir);
+                        var videoResult = WiiVideoPatcher.PatchFile(mainDolPath, _options.DeflickerMode, _options.RemoveDithering, gameId);
+                        Log($"Video patch ({gameId ?? "unknown ID"}): mode={_options.DeflickerMode}, tables={videoResult.VideoModeTablesPatched}, " +
+                            $"standalone={videoResult.RogueFiltersPatched}, copyFilter={videoResult.CopyFilterPatched}, dithering={videoResult.DitheringPatched}" +
+                            (videoResult.SkippedExcludedGame ? ", skipped (excluded game)" : ""));
+                    }
+
                     string wiimmfiOption = _options.Wiimmfi ? " --wiimmfi" : "";
                     UpdateStatus("Rebuilding patched game ISO...", 33);
                     await LaunchProgramAsync(Path.Combine(_options.TempToolsPath, "WIT", "wit.exe"), $"copy \"{isoExtractDir}\" --DEST \"{gameIsoPath}\" -ovv --links --iso{wiimmfiOption}", true, cancellationToken);
@@ -441,6 +454,8 @@ public class BuildEngine(BuildOptions options, IProgress<(string Message, double
                 }
                 else
                 {
+                    if (_options.DeflickerMode != DeflickerMode.Keep || _options.RemoveDithering)
+                        Log("Warning: video patches (deflicker/dithering) require trimming and were skipped because \"Don't trim game output\" is enabled.");
                     UpdateStatus("Copying untrimmed game ISO...", 33);
                     File.Copy(currentWiiGame, gameIsoPath, true);
                 }

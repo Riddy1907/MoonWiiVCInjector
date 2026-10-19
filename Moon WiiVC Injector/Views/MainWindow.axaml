@@ -151,6 +151,21 @@
           <TextBlock Text="Wii Retail Injection / vWii NAND Title Launcher Patches" FontWeight="SemiBold"/>
           <CheckBox Name="Wiimmfi" Content="Patch game to use the Wiimmfi server for online play (Wii Retail only)" IsChecked="{Binding Wiimmfi}"/>
           <CheckBox Name="WiiVMC" Content="Patch video mode with Wii-VMC (Wii Retail only, opens new window)" IsChecked="{Binding WiiVMC}"/>
+
+          <TextBlock Text="Video Patches (Wii Retail only, ported from USB Loader GX)" FontWeight="SemiBold" Margin="0,10,0,0"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Deflicker filter:" VerticalAlignment="Center"/>
+            <ComboBox Name="DeflickerMode" Width="260" SelectedIndex="{Binding DeflickerModeIndex}"
+                      ToolTip.Tip="Removes or weakens the vertical blur filter Wii games apply. OFF (Safe) is recommended; OFF (Extended) also blocks the game from re-enabling it but may break fades.">
+              <ComboBoxItem Content="Keep (unchanged)"/>
+              <ComboBoxItem Content="OFF (Safe) - recommended"/>
+              <ComboBoxItem Content="OFF (Extended)"/>
+              <ComboBoxItem Content="ON (Low)"/>
+              <ComboBoxItem Content="ON (Medium)"/>
+              <ComboBoxItem Content="ON (High)"/>
+            </ComboBox>
+          </StackPanel>
+          <CheckBox Name="RemoveDithering" Content="Remove dithering (may cause colour banding)" IsChecked="{Binding RemoveDithering}"/>
           <CheckBox Name="DisableGamePad" Content="Don't use GamePad as controller (Won't prompt for usage)" IsChecked="{Binding DisableGamePad}"/>
           <CheckBox Name="DisableTrimming" Content="Don't trim game output (Wii Retail only)" IsChecked="{Binding DisableTrimming}"/>
           <CheckBox Name="DisableNintendontAutoboot" Content="Disable Autoboot" IsChecked="{Binding DisableNintendontAutoboot}"/>

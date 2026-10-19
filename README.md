@@ -111,6 +111,7 @@ Special thanks and full attribution to the authors and projects of the Wii, Wii 
   * **[GetExtTypePatcher](https://github.com/FIX94/GetExtTypePatcher)**: PowerPC Classic Controller patcher for `main.dol` (native C# port in `DolPatcher.cs`).
   * **[c2w_patcher](https://github.com/FIX94/c2w_patcher)**: Cafe2Wii Ancast image patcher for vWii (native C# port in `C2wPatcher.cs`).
   * **[Nintendont](https://github.com/FIX94/Nintendont)**: GameCube autoboot and forwarder DOL loaders.
+* **[USB Loader GX team (wiidev)](https://github.com/wiidev/usbloadergx)**: Deflicker / vertical filter and dithering patches (native C# port in `WiiVideoPatcher.cs`).
 * **[Tim Ogus (timogus)](https://bitbucket.org/timogus/wav2btsnd)**: Creator of `wav2btsnd` (native C# lossless audio port in `BtsndConverter.cs`).
 * **[Nanook](https://github.com/Nanook/NKit)**: Creator of `NKit` (Nintendo GameCube and Wii disc image compression/recovery tool).
 * **[Wiimms (wiimm)](https://wit.wiimm.de/)**: Creator of `WIT` (Wiimms ISO Tools) for Wii/GC disc and partition handling.

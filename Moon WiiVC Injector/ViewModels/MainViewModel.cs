@@ -310,6 +310,21 @@ public partial class MainViewModel : ViewModelBase
         set => SetProperty(ref _wiiVMC, value);
     }
 
+    // Video patches (ported from USB Loader GX), indices map to Core.DeflickerMode
+    private int _deflickerModeIndex;
+    public int DeflickerModeIndex
+    {
+        get => _deflickerModeIndex;
+        set => SetProperty(ref _deflickerModeIndex, value);
+    }
+
+    private bool _removeDithering;
+    public bool RemoveDithering
+    {
+        get => _removeDithering;
+        set => SetProperty(ref _removeDithering, value);
+    }
+
     private bool _disableGamePad;
     public bool DisableGamePad
     {
@@ -1797,6 +1812,8 @@ public partial class MainViewModel : ViewModelBase
             EnablePackedLine2 = EnablePackedLine2,
             Wiimmfi = Wiimmfi,
             WiiVMC = WiiVMC,
+            DeflickerMode = (Core.DeflickerMode)DeflickerModeIndex,
+            RemoveDithering = RemoveDithering,
             DisableTrimming = DisableTrimming,
             DisableNintendontAutoboot = DisableNintendontAutoboot,
             C2WPatch = C2WPatchFlag,

@@ -1,0 +1,35 @@
+name: macOS Build
+
+on:
+  push:
+    branches: [ "feature/**" ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        rid: [ osx-arm64, osx-x64 ]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Publish
+      run: >
+        dotnet publish "Moon WiiVC Injector/Moon WiiVC Injector.csproj"
+        -c Release -r ${{ matrix.rid }} --self-contained true
+        -p:PublishSingleFile=true -o publish/${{ matrix.rid }}
+
+    - name: Package (keeps the executable bit)
+      run: tar -czf "MoonWiiVCInjector-${{ matrix.rid }}.tar.gz" -C publish/${{ matrix.rid }} .
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: MoonWiiVCInjector-${{ matrix.rid }}
+        path: MoonWiiVCInjector-${{ matrix.rid }}.tar.gz
