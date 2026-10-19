@@ -20,6 +20,16 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
+    - name: Verify bundled wit-mac runs after ad-hoc re-sign
+      if: matrix.rid == 'osx-arm64'
+      run: |
+        mkdir -p /tmp/tooldir && unzip -q "Moon WiiVC Injector/Resources/TOOLDIR.zip" -d /tmp/tooldir
+        WIT=$(find /tmp/tooldir -name wit-mac | head -1)
+        chmod +x "$WIT"
+        echo "Before re-sign:"; "$WIT" --version || echo "exit code $? (expected 137 = killed, invalid signature)"
+        /usr/bin/codesign --force --sign - "$WIT"
+        echo "After re-sign:"; "$WIT" --version
+
     - name: Publish
       run: >
         dotnet publish "Moon WiiVC Injector/Moon WiiVC Injector.csproj"

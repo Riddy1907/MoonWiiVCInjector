@@ -706,6 +706,14 @@ public partial class MainViewModel : ViewModelBase
                             }
                         }
                     }
+
+                    // The bundled wit-mac arm64 slice ships with an invalid ad-hoc signature (page hashes no
+                    // longer match), so Apple Silicon kills it on launch (exit code 137). Re-sign it ad-hoc
+                    // with Apple's own codesign tool after every extraction.
+                    if (OperatingSystem.IsMacOS() && File.Exists(witMacPath))
+                    {
+                        ResignAdHoc(witMacPath);
+                    }
                 }
 
                 AppLogger.DebugLog("Tool directory extracted.");
@@ -725,6 +733,32 @@ public partial class MainViewModel : ViewModelBase
                 AppLogger.Error("Failed to create Source/Build directories", ex);
             }
         });
+    }
+
+    private static void ResignAdHoc(string binaryPath)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("/usr/bin/codesign", $"--force --sign - \"{binaryPath}\"")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc == null) return;
+            string err = proc.StandardError.ReadToEnd();
+            proc.WaitForExit(15000);
+            if (proc.ExitCode == 0)
+                AppLogger.Info($"Re-signed {Path.GetFileName(binaryPath)} (ad-hoc) for Apple Silicon.");
+            else
+                AppLogger.Warning($"codesign failed for {Path.GetFileName(binaryPath)} (exit {proc.ExitCode}): {err.Trim()}");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning($"Could not re-sign {Path.GetFileName(binaryPath)}: {ex.Message}");
+        }
     }
 
     private void LoadStoredKeys()
