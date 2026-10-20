@@ -225,7 +225,10 @@ public static class TgaReader
         writer.Write((ushort)bmp.Width);
         writer.Write((ushort)bmp.Height);
         writer.Write((byte)bpp);
-        writer.Write((byte)0); // Descriptor (0 = bottom-to-top layout)
+        // Descriptor: bits 0-3 = alpha bits per pixel, bit 5 = 0 (bottom-to-top layout).
+        // 32-bit images must declare 8 alpha bits like FreeImage/png2tgacmd output and Nintendo's own
+        // meta TGAs; with 0 the Wii U menu cannot read iconTex.tga and shows a "?" icon.
+        writer.Write((byte)(bpp == 32 ? 0x08 : 0x00));
 
         int bytesPerPixel = bpp / 8;
         byte[] pixelData = new byte[bmp.Width * bmp.Height * bytesPerPixel];
@@ -315,6 +318,12 @@ public static class TgaReader
             }
 
         writer.Write(pixelData);
+
+        // TGA 2.0 footer (no extension/developer area), as written by FreeImage and found in
+        // Nintendo's meta TGAs: extension offset, developer offset, signature "TRUEVISION-XFILE.\0".
+        writer.Write(0u);
+        writer.Write(0u);
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("TRUEVISION-XFILE.\0"));
     }
 
     /// <summary>
