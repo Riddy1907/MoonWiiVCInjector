@@ -313,9 +313,17 @@ public class BuildEngine(BuildOptions options, IProgress<(string Message, double
                 """;
             await File.WriteAllTextAsync(Path.Combine(_options.TempBuildPath, "code", "app.xml"), appXml);
 
-            string line2Text = _options.EnablePackedLine2 ? _options.PackedTitleLine2 : "";
+            // meta.xml layout matches TeconMoon's WiiVC Injector. The Wii U menu needs title_id, group_id,
+            // os_version, region, drc_use etc. here; without them the title shows a "?" icon and is reported
+            // as corrupted (these fields were dropped in 5ddc6b4).
+            string line1 = System.Security.SecurityElement.Escape(_options.PackedTitleLine1) ?? string.Empty;
+            string longName = _options.EnablePackedLine2
+                ? line1 + "\n" + (System.Security.SecurityElement.Escape(_options.PackedTitleLine2) ?? string.Empty)
+                : line1;
+            string titleIdHex = _options.TitleIdHex;
+
             var metaXmlBuilder = new StringBuilder();
-            metaXmlBuilder.AppendLine($"""
+            metaXmlBuilder.Append($"""
                 <?xml version="1.0" encoding="utf-8"?>
                 <menu type="complex" access="777">
                   <version type="unsignedInt" length="4">33</version>
@@ -327,25 +335,80 @@ public class BuildEngine(BuildOptions options, IProgress<(string Message, double
                   <app_launch_type type="hexBinary" length="4">00000000</app_launch_type>
                   <invisible_flag type="hexBinary" length="4">00000000</invisible_flag>
                   <no_managed_flag type="hexBinary" length="4">00000000</no_managed_flag>
-                  <no_event_log type="hexBinary" length="4">00000000</no_event_log>
+                  <no_event_log type="hexBinary" length="4">00000002</no_event_log>
                   <no_icon_database type="hexBinary" length="4">00000000</no_icon_database>
-                  <launch_switch type="hexBinary" length="4">00000000</launch_switch>
-                  <add_on_unique_id0 type="hexBinary" length="4">00000000</add_on_unique_id0>
-                  <add_on_unique_id1 type="hexBinary" length="4">00000000</add_on_unique_id1>
-                  <add_on_unique_id2 type="hexBinary" length="4">00000000</add_on_unique_id2>
-                  <add_on_unique_id3 type="hexBinary" length="4">00000000</add_on_unique_id3>
-                  <add_on_unique_id4 type="hexBinary" length="4">00000000</add_on_unique_id4>
-                  <add_on_unique_id5 type="hexBinary" length="4">00000000</add_on_unique_id5>
-                  <add_on_unique_id6 type="hexBinary" length="4">00000000</add_on_unique_id6>
-                  <add_on_unique_id7 type="hexBinary" length="4">00000000</add_on_unique_id7>
+                  <launching_flag type="hexBinary" length="4">00000004</launching_flag>
+                  <install_flag type="hexBinary" length="4">00000000</install_flag>
+                  <closing_msg type="unsignedInt" length="4">0</closing_msg>
+                  <title_version type="unsignedInt" length="4">0</title_version>
+                  <title_id type="hexBinary" length="8">{_options.PackedTitleIDLine}</title_id>
+                  <group_id type="hexBinary" length="4">{titleIdHex}</group_id>
+                  <boss_id type="hexBinary" length="8">0000000000000000</boss_id>
+                  <os_version type="hexBinary" length="8">000500101000400A</os_version>
+                  <app_size type="hexBinary" length="8">0000000000000000</app_size>
+                  <common_save_size type="hexBinary" length="8">0000000000000000</common_save_size>
+                  <account_save_size type="hexBinary" length="8">0000000000000000</account_save_size>
+                  <common_boss_size type="hexBinary" length="8">0000000000000000</common_boss_size>
+                  <account_boss_size type="hexBinary" length="8">0000000000000000</account_boss_size>
+                  <save_no_rollback type="unsignedInt" length="4">0</save_no_rollback>
+                  <join_game_id type="hexBinary" length="4">00000000</join_game_id>
+                  <join_game_mode_mask type="hexBinary" length="8">0000000000000000</join_game_mode_mask>
+                  <bg_daemon_enable type="unsignedInt" length="4">0</bg_daemon_enable>
+                  <olv_accesskey type="unsignedInt" length="4">3921400692</olv_accesskey>
+                  <wood_tin type="unsignedInt" length="4">0</wood_tin>
+                  <e_manual type="unsignedInt" length="4">0</e_manual>
+                  <e_manual_version type="unsignedInt" length="4">0</e_manual_version>
+                  <region type="hexBinary" length="4">00000002</region>
+                  <pc_cero type="unsignedInt" length="4">128</pc_cero>
+                  <pc_esrb type="unsignedInt" length="4">6</pc_esrb>
+                  <pc_bbfc type="unsignedInt" length="4">192</pc_bbfc>
+                  <pc_usk type="unsignedInt" length="4">128</pc_usk>
+                  <pc_pegi_gen type="unsignedInt" length="4">128</pc_pegi_gen>
+                  <pc_pegi_fin type="unsignedInt" length="4">192</pc_pegi_fin>
+                  <pc_pegi_prt type="unsignedInt" length="4">128</pc_pegi_prt>
+                  <pc_pegi_bbfc type="unsignedInt" length="4">128</pc_pegi_bbfc>
+                  <pc_cob type="unsignedInt" length="4">128</pc_cob>
+                  <pc_grb type="unsignedInt" length="4">128</pc_grb>
+                  <pc_cgsrr type="unsignedInt" length="4">128</pc_cgsrr>
+                  <pc_oflc type="unsignedInt" length="4">128</pc_oflc>
+                  <pc_reserved0 type="unsignedInt" length="4">192</pc_reserved0>
+                  <pc_reserved1 type="unsignedInt" length="4">192</pc_reserved1>
+                  <pc_reserved2 type="unsignedInt" length="4">192</pc_reserved2>
+                  <pc_reserved3 type="unsignedInt" length="4">192</pc_reserved3>
+                  <ext_dev_nunchaku type="unsignedInt" length="4">0</ext_dev_nunchaku>
+                  <ext_dev_classic type="unsignedInt" length="4">0</ext_dev_classic>
+                  <ext_dev_urcc type="unsignedInt" length="4">0</ext_dev_urcc>
+                  <ext_dev_board type="unsignedInt" length="4">0</ext_dev_board>
+                  <ext_dev_usb_keyboard type="unsignedInt" length="4">0</ext_dev_usb_keyboard>
+                  <ext_dev_etc type="unsignedInt" length="4">0</ext_dev_etc>
+                  <ext_dev_etc_name type="string" length="512"></ext_dev_etc_name>
+                  <eula_version type="unsignedInt" length="4">0</eula_version>
+                  <drc_use type="unsignedInt" length="4">{_options.DrcUse}</drc_use>
+                  <network_use type="unsignedInt" length="4">0</network_use>
+                  <online_account_use type="unsignedInt" length="4">0</online_account_use>
+                  <direct_boot type="unsignedInt" length="4">0</direct_boot>
+                  <reserved_flag0 type="hexBinary" length="4">00010001</reserved_flag0>
+                  <reserved_flag1 type="hexBinary" length="4">00080023</reserved_flag1>
+                  <reserved_flag2 type="hexBinary" length="4">{titleIdHex}</reserved_flag2>
+                  <reserved_flag3 type="hexBinary" length="4">00000000</reserved_flag3>
+                  <reserved_flag4 type="hexBinary" length="4">00000000</reserved_flag4>
+                  <reserved_flag5 type="hexBinary" length="4">00000000</reserved_flag5>
+                  <reserved_flag6 type="hexBinary" length="4">00000003</reserved_flag6>
+                  <reserved_flag7 type="hexBinary" length="4">00000005</reserved_flag7>
+
                 """);
 
             for (int i = 0; i <= 11; i++)
             {
                 string suffix = GetLanguageSuffix(i);
-                metaXmlBuilder.AppendLine($"  <longname_{suffix} type=\"string\" length=\"512\">{System.Security.SecurityElement.Escape(_options.PackedTitleLine1)}</longname_{suffix}>");
-                metaXmlBuilder.AppendLine($"  <shortname_{suffix} type=\"string\" length=\"256\">{System.Security.SecurityElement.Escape(line2Text)}</shortname_{suffix}>");
+                metaXmlBuilder.AppendLine($"  <longname_{suffix} type=\"string\" length=\"512\">{longName}</longname_{suffix}>");
+                metaXmlBuilder.AppendLine($"  <shortname_{suffix} type=\"string\" length=\"512\">{line1}</shortname_{suffix}>");
                 metaXmlBuilder.AppendLine($"  <publisher_{suffix} type=\"string\" length=\"256\"></publisher_{suffix}>");
+            }
+
+            for (int i = 0; i < 32; i++)
+            {
+                metaXmlBuilder.AppendLine($"  <add_on_unique_id{i} type=\"hexBinary\" length=\"4\">00000000</add_on_unique_id{i}>");
             }
 
             metaXmlBuilder.AppendLine("</menu>");
@@ -861,6 +924,7 @@ public class BuildEngine(BuildOptions options, IProgress<(string Message, double
             8 => "nl",
             9 => "pt",
             10 => "ru",
+            11 => "zht",
             _ => "en"
         };
     }
