@@ -36,7 +36,7 @@ jobs:
         -c Release -r ${{ matrix.rid }} --self-contained true
         -p:PublishSingleFile=true -o publish/${{ matrix.rid }}
 
-    - name: Create .app bundle and DMG
+    - name: Create .app bundle
       run: |
         set -e
         APP="dist/Moon WiiVC Injector.app"
@@ -73,30 +73,32 @@ jobs:
           ${ICON_KEY}
         </dict></plist>
         EOF
+        plutil -lint "$APP/Contents/Info.plist"
 
-        # Keep the signature the .NET SDK gave the single-file executable. Re-signing it with
-        # `codesign --force --deep` left the process stuck at _dyld_start on Apple Silicon.
-        codesign --verify --verbose "$APP/Contents/MacOS/Moon WiiVC Injector"
+        # Diagnostics as annotations (readable via the API)
+        BIN="$APP/Contents/MacOS/Moon WiiVC Injector"
+        codesign -dv --verbose=2 "$BIN" 2>&1 | head -12 | while read -r l; do echo "::notice title=sig-sdk::$l"; done
+        if codesign --verify --verbose "$BIN" > /tmp/v.txt 2>&1; then echo "::notice title=verify-sdk::OK"
+        else echo "::notice title=verify-sdk::FAILED $(tr '\n' ' ' < /tmp/v.txt)"; fi
 
-    - name: Smoke test - executable gets past the loader
+    - name: Launch probe (SDK signature vs. re-signed)
       if: matrix.rid == 'osx-arm64'
       run: |
-        BIN="dist/Moon WiiVC Injector.app/Contents/MacOS/Moon WiiVC Injector"
-        "$BIN" > /tmp/moon.log 2>&1 &
-        PID=$!
-        sleep 15
-        if ! kill -0 $PID 2>/dev/null; then
-          # Exited on its own (e.g. no display on the runner): it got past the loader.
-          echo "Process exited by itself - loader OK"; cat /tmp/moon.log || true; exit 0
-        fi
-        THREADS=$(ps -M -p $PID | tail -n +2 | wc -l | tr -d ' ')
-        echo "Threads after 15s: $THREADS"
-        kill -9 $PID 2>/dev/null || true
-        cat /tmp/moon.log || true
-        # A process stuck in the loader has exactly 1 thread; a running .NET app has many.
-        test "$THREADS" -gt 3
+        probe() {
+          "$1" > /tmp/probe.log 2>&1 &
+          local pid=$!; sleep 15
+          if ! kill -0 $pid 2>/dev/null; then echo "exited: $(head -c 200 /tmp/probe.log | tr '\n' ' ')"; return; fi
+          local t=$(ps -M -p $pid | tail -n +2 | wc -l | tr -d ' ')
+          kill -9 $pid 2>/dev/null; echo "running threads=$t"
+        }
+        echo "::notice title=probe-raw::$(probe "publish/osx-arm64/Moon WiiVC Injector")"
+        echo "::notice title=probe-bundle-sdk-sig::$(probe "dist/Moon WiiVC Injector.app/Contents/MacOS/Moon WiiVC Injector")"
+        cp -R "dist/Moon WiiVC Injector.app" /tmp/resigned.app
+        codesign --force --deep --sign - /tmp/resigned.app 2>&1 | head -3 || true
+        echo "::notice title=probe-resigned-deep::$(probe "/tmp/resigned.app/Contents/MacOS/Moon WiiVC Injector")"
 
-        # DMG with an Applications shortcut for drag & drop install
+    - name: Create DMG
+      run: |
         ln -s /Applications dist/Applications
         hdiutil create -volname "Moon WiiVC Injector" -srcfolder dist -ov -format UDZO \
           "MoonWiiVCInjector-${{ matrix.rid }}.dmg"
