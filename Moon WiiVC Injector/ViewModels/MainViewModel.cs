@@ -1856,7 +1856,8 @@ public partial class MainViewModel : ViewModelBase
             DisableTrimming = DisableTrimming,
             DisableNintendontAutoboot = DisableNintendontAutoboot,
             C2WPatch = C2WPatchFlag,
-            LRPatch = LrPatch,
+            // like TeconMoon/nfs2iso2nfs: the L/R->ZL/ZR swap only exists for Classic Controller modes
+            LRPatch = LrPatch && (CcEmu || ForceCC),
             SoundDir = BootSoundText,
             LogoDir = LogoSourceText,
             DrcDir = DrcSourceText,
