@@ -75,13 +75,12 @@ jobs:
         EOF
         plutil -lint "$APP/Contents/Info.plist"
 
-        # Diagnostics as annotations (readable via the API)
-        BIN="$APP/Contents/MacOS/Moon WiiVC Injector"
-        codesign -dv --verbose=2 "$BIN" 2>&1 | head -12 | while read -r l; do echo "::notice title=sig-sdk::$l"; done
-        if codesign --verify --verbose "$BIN" > /tmp/v.txt 2>&1; then echo "::notice title=verify-sdk::OK"
-        else echo "::notice title=verify-sdk::FAILED $(tr '\n' ' ' < /tmp/v.txt)"; fi
+        # Ad-hoc sign the whole bundle (seals Info.plist and resources). This exact build was
+        # verified to start on Apple Silicon / macOS 26 when launched from a fresh location.
+        codesign --force --deep --sign - "$APP"
+        codesign --verify --deep --strict --verbose "$APP"
 
-    - name: Launch probe (SDK signature vs. re-signed)
+    - name: Launch probe (bundle gets past the loader)
       if: matrix.rid == 'osx-arm64'
       run: |
         probe() {
@@ -91,11 +90,9 @@ jobs:
           local t=$(ps -M -p $pid | tail -n +2 | wc -l | tr -d ' ')
           kill -9 $pid 2>/dev/null; echo "running threads=$t"
         }
-        echo "::notice title=probe-raw::$(probe "publish/osx-arm64/Moon WiiVC Injector")"
-        echo "::notice title=probe-bundle-sdk-sig::$(probe "dist/Moon WiiVC Injector.app/Contents/MacOS/Moon WiiVC Injector")"
-        cp -R "dist/Moon WiiVC Injector.app" /tmp/resigned.app
-        codesign --force --deep --sign - /tmp/resigned.app 2>&1 | head -3 || true
-        echo "::notice title=probe-resigned-deep::$(probe "/tmp/resigned.app/Contents/MacOS/Moon WiiVC Injector")"
+        RESULT=$(probe "dist/Moon WiiVC Injector.app/Contents/MacOS/Moon WiiVC Injector")
+        echo "::notice title=launch-probe::$RESULT"
+        case "$RESULT" in "running threads=1"|"running threads=2") exit 1;; esac
 
     - name: Create DMG
       run: |
