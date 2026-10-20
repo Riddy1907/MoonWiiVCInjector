@@ -295,6 +295,7 @@ public class BuildEngine(BuildOptions options, IProgress<(string Message, double
             }
 
             UpdateStatus("Generating app.xml and meta.xml...", 14);
+            Log($"Controller: nfs flags='{_options.NfsPatchFlag.Trim()}', drc_use={_options.DrcUse}, LR->ZLZR={_options.LRPatch}");
 
             // Generate app.xml and meta.xml
             string appXml = $"""

@@ -1823,11 +1823,16 @@ public partial class MainViewModel : ViewModelBase
         string nfsPatchFlag = "";
         if (HorWiiMote) nfsPatchFlag = " -horizontal";
         else if (VerWiiMote) nfsPatchFlag = " -wiimote";
-        else if (CcEmu) nfsPatchFlag = " -nocc";
+        else if (CcEmu) nfsPatchFlag = "";            // plain Classic Controller emulation needs no fw.img patch (TeconMoon/UWUVCI)
         else if (ForceCC) nfsPatchFlag = " -instantcc";
         else if (ForceNoCC) nfsPatchFlag = " -nocc";
 
-        string drcuse = DisableGamePad ? "65537" : "1";
+        // meta.xml drc_use: 65537 = GamePad is used as a controller, 1 = GamePad not used.
+        // Matches TeconMoon: Wii titles use the GamePad whenever an emulation mode is selected,
+        // GameCube/homebrew use it unless "Don't use GamePad as controller" is ticked.
+        string drcuse = (_systemType == "gcn" || _systemType == "dol")
+            ? (DisableGamePad ? "1" : "65537")
+            : (NoGamePadEmu ? "1" : "65537");
 
         var options = new BuildOptions
         {
