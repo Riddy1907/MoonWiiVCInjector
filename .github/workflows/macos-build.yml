@@ -74,9 +74,27 @@ jobs:
         </dict></plist>
         EOF
 
-        # Ad-hoc signature for the whole bundle (no Apple notarization)
-        codesign --force --deep --sign - "$APP"
-        codesign --verify --deep --strict "$APP"
+        # Keep the signature the .NET SDK gave the single-file executable. Re-signing it with
+        # `codesign --force --deep` left the process stuck at _dyld_start on Apple Silicon.
+        codesign --verify --verbose "$APP/Contents/MacOS/Moon WiiVC Injector"
+
+    - name: Smoke test - executable gets past the loader
+      if: matrix.rid == 'osx-arm64'
+      run: |
+        BIN="dist/Moon WiiVC Injector.app/Contents/MacOS/Moon WiiVC Injector"
+        "$BIN" > /tmp/moon.log 2>&1 &
+        PID=$!
+        sleep 15
+        if ! kill -0 $PID 2>/dev/null; then
+          # Exited on its own (e.g. no display on the runner): it got past the loader.
+          echo "Process exited by itself - loader OK"; cat /tmp/moon.log || true; exit 0
+        fi
+        THREADS=$(ps -M -p $PID | tail -n +2 | wc -l | tr -d ' ')
+        echo "Threads after 15s: $THREADS"
+        kill -9 $PID 2>/dev/null || true
+        cat /tmp/moon.log || true
+        # A process stuck in the loader has exactly 1 thread; a running .NET app has many.
+        test "$THREADS" -gt 3
 
         # DMG with an Applications shortcut for drag & drop install
         ln -s /Applications dist/Applications
