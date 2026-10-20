@@ -54,7 +54,7 @@ The primary mission of this modernized edition is to provide a **clean, fast, po
 
 ## 🍎 macOS Installation (DMG)
 
-1. Download `MoonWiiVCInjector-osx-arm64-dmg` (Apple Silicon) or `-osx-x64-dmg` (Intel) from the GitHub Actions run and open the DMG.
+1. Download `MoonWiiVCInjector-osx-arm64-dmg` (Apple Silicon only) from the GitHub Actions run and open the DMG.
 2. Drag **Moon WiiVC Injector** into **Applications**.
 3. The app is ad-hoc signed, not notarized by Apple. On first launch macOS blocks it: open **System Settings → Privacy & Security** and click **Open Anyway**.
 4. Java is required (JNUSTool / NUSPacker): `brew install openjdk@21` or the Temurin installer from adoptium.net.

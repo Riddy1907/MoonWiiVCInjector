@@ -10,7 +10,7 @@ jobs:
     runs-on: macos-14
     strategy:
       matrix:
-        rid: [ osx-arm64, osx-x64 ]
+        rid: [ osx-arm64 ]
 
     steps:
     - uses: actions/checkout@v4
