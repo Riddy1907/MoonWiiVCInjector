@@ -166,6 +166,7 @@
             </ComboBox>
           </StackPanel>
           <CheckBox Name="RemoveDithering" Content="Remove dithering (may cause colour banding)" IsChecked="{Binding RemoveDithering}"/>
+          <CheckBox Name="FramebufferWidth" Content="Video width = framebuffer (1:1 horizontal, no VI stretching; small side borders)" IsChecked="{Binding FramebufferWidth}"/>
           <CheckBox Name="DisableGamePad" Content="Don't use GamePad as controller (Won't prompt for usage)" IsChecked="{Binding DisableGamePad}"/>
           <CheckBox Name="DisableTrimming" Content="Don't trim game output (Wii Retail only)" IsChecked="{Binding DisableTrimming}"/>
           <CheckBox Name="DisableNintendontAutoboot" Content="Disable Autoboot" IsChecked="{Binding DisableNintendontAutoboot}"/>

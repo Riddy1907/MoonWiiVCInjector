@@ -325,6 +325,13 @@ public partial class MainViewModel : ViewModelBase
         set => SetProperty(ref _removeDithering, value);
     }
 
+    private bool _framebufferWidth;
+    public bool FramebufferWidth
+    {
+        get => _framebufferWidth;
+        set => SetProperty(ref _framebufferWidth, value);
+    }
+
     private bool _disableGamePad;
     public bool DisableGamePad
     {
@@ -1853,6 +1860,7 @@ public partial class MainViewModel : ViewModelBase
             WiiVMC = WiiVMC,
             DeflickerMode = (Core.DeflickerMode)DeflickerModeIndex,
             RemoveDithering = RemoveDithering,
+            FramebufferWidth = FramebufferWidth,
             DisableTrimming = DisableTrimming,
             DisableNintendontAutoboot = DisableNintendontAutoboot,
             C2WPatch = C2WPatchFlag,

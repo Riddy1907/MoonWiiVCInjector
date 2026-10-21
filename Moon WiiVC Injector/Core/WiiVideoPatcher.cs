@@ -31,16 +31,18 @@ public sealed record WiiVideoPatchResult(
     int RogueFiltersPatched,
     bool CopyFilterPatched,
     bool DitheringPatched,
-    bool SkippedExcludedGame)
+    bool SkippedExcludedGame,
+    bool FramebufferWidthPatched = false)
 {
-    public bool AnyPatched => VideoModeTablesPatched > 0 || RogueFiltersPatched > 0 || CopyFilterPatched || DitheringPatched;
+    public bool AnyPatched => VideoModeTablesPatched > 0 || RogueFiltersPatched > 0 || CopyFilterPatched || DitheringPatched || FramebufferWidthPatched;
 }
 
 /// <summary>
 /// Patches a Wii main.dol to remove or adjust the deflicker (vertical) filter and, optionally, dithering.
 ///
 /// Ported from USB Loader GX (source/patches/gamepatches.c, GPL-2.0-or-later):
-/// patch_vfilters, patch_vfilters_rogue, deflicker_patch and dithering_patch.
+/// patch_vfilters, patch_vfilters_rogue, deflicker_patch, dithering_patch, and patch_width
+/// ("Video Width: Framebuffer", together with find_safe_space).
 /// https://github.com/wiidev/usbloadergx
 ///
 /// USB Loader GX applies these to the game's DOL sections in memory at boot. Injected games cannot be
@@ -136,7 +138,7 @@ public static class WiiVideoPatcher
     /// <summary>
     /// Patches a main.dol file in place.
     /// </summary>
-    public static WiiVideoPatchResult PatchFile(string dolPath, DeflickerMode mode, bool removeDithering, string? gameId = null)
+    public static WiiVideoPatchResult PatchFile(string dolPath, DeflickerMode mode, bool removeDithering, string? gameId = null, bool framebufferWidth = false)
     {
         if (!File.Exists(dolPath))
         {
@@ -145,7 +147,7 @@ public static class WiiVideoPatcher
         }
 
         byte[] dol = File.ReadAllBytes(dolPath);
-        var result = Patch(dol, mode, removeDithering, gameId);
+        var result = Patch(dol, mode, removeDithering, gameId, framebufferWidth);
 
         if (result.AnyPatched)
         {
@@ -158,7 +160,7 @@ public static class WiiVideoPatcher
     /// <summary>
     /// Patches a DOL image in memory and logs what was found.
     /// </summary>
-    public static WiiVideoPatchResult Patch(byte[] dol, DeflickerMode mode, bool removeDithering, string? gameId = null)
+    public static WiiVideoPatchResult Patch(byte[] dol, DeflickerMode mode, bool removeDithering, string? gameId = null, bool framebufferWidth = false)
     {
         ArgumentNullException.ThrowIfNull(dol);
 
@@ -206,7 +208,102 @@ public static class WiiVideoPatcher
                 : $"{Tag} GXSetDither pattern not found; dithering unchanged.");
         }
 
-        return new WiiVideoPatchResult(tables, rogue, copyFilter, dither, false);
+        bool width = false;
+        if (framebufferWidth)
+        {
+            width = PatchFramebufferWidth(dol);
+            AppLogger.Info(width
+                ? $"{Tag} VIConfigure patched: VI width = framebuffer width (no horizontal VI scaling), image centered."
+                : $"{Tag} VIConfigure width pattern or safe space not found; video width unchanged.");
+        }
+
+        return new WiiVideoPatchResult(tables, rogue, copyFilter, dither, false, width);
+    }
+
+    // ---- Video width = framebuffer width (port of patch_width / find_safe_space) ----
+
+    private static readonly byte[] SafeSpacePatternA = [0x80, 0x1E, 0x00, 0x00, 0x3C, 0x60, 0x80, 0x00, 0x83]; // most games
+    private static readonly byte[] SafeSpacePatternB = [0x80, 0x1F, 0x00, 0x00, 0x3C, 0x60, 0x80, 0x00, 0x83]; // Mortal Kombat
+
+    private static readonly byte[] WidthPattern =
+    [
+        0x40, 0x82, 0x00, 0x08, 0x48, 0x00, 0x00, 0x1C,
+        0x28, 0x09, 0x00, 0x03, 0x40, 0x82, 0x00, 0x08,
+        0x48, 0x00, 0x00, 0x10, 0x2C, 0x03, 0x00, 0x00,
+        0x40, 0x82, 0x00, 0x08, 0x54, 0xA5, 0x0C, 0x3C,
+    ];
+
+    /// <summary>
+    /// Makes VIConfigure use the framebuffer width (GXRModeObj.fbWidth, usually 640) as the VI output width
+    /// instead of viWidth (usually 670-720), so the VI no longer resamples the image horizontally, and
+    /// re-centers it with viXOrigin = (720 - fbWidth) / 2. A small code cave is placed at the "safe space"
+    /// USB Loader GX uses. Branch offsets are computed from virtual addresses via the DOL section table,
+    /// because the DOL is patched on disk rather than in memory.
+    /// </summary>
+    internal static bool PatchFramebufferWidth(byte[] dol)
+    {
+        int safe = FindSafeSpace(dol);
+        if (safe < 0) return false;
+        int cave = safe + 12; // first crclr after the safe-space marker, as in USB Loader GX
+        if (cave + 0x14 > dol.Length) return false;
+
+        for (int i = 0x70; i <= dol.Length - WidthPattern.Length; i += 4)
+        {
+            if (!dol.AsSpan(i, WidthPattern.Length).SequenceEqual(WidthPattern)) continue;
+            if (!(dol[i - 0x70] == 0xA0 && dol[i - 0x6E] == 0x00 && dol[i - 0x6D] == 0x0A)) continue; // lhz rA, 0x0A(rX)  viXOrigin
+            if (!(dol[i - 0x44] == 0xA0 && dol[i - 0x42] == 0x00 && dol[i - 0x41] == 0x0E)) continue; // lhz rB, 0x0E(rX)  viWidth
+
+            uint caveVa = FileOffsetToVirtual(dol, cave);
+            uint siteVa = FileOffsetToVirtual(dol, i - 0x70);
+            if (caveVa == 0 || siteVa == 0) return false;
+
+            uint regA = (uint)(dol[i - 0x6F] >> 5);
+            uint regB = (uint)(dol[i - 0x43] >> 5);
+
+            // viWidth load -> fbWidth load
+            dol[i - 0x41] = 0x04;
+
+            // Code cave: rA = fbWidth; rB = 720 - rA; rA = 2; rA = rB / rA; branch back
+            uint orig = (uint)(dol[i - 0x70] << 24 | dol[i - 0x6F] << 16);
+            WriteWord(dol, cave + 0x00, orig | 4);                                        // lhz rA, 0x04(rX)
+            WriteWord(dol, cave + 0x04, 0x200002D0u | (regB << 21) | (regA << 16));       // subfic rB, rA, 720
+            WriteWord(dol, cave + 0x08, 0x38000002u | (regA << 21));                      // li rA, 2
+            WriteWord(dol, cave + 0x0C, 0x7C000396u | (regA << 21) | (regB << 16) | (regA << 11)); // divwu rA, rB, rA
+            WriteWord(dol, cave + 0x10, 0x48000000u + (((siteVa + 4) - (caveVa + 0x10)) & 0x3FFFFFF)); // b site+4
+            WriteWord(dol, i - 0x70, 0x48000000u + ((caveVa - siteVa) & 0x3FFFFFF));      // b cave
+            return true;
+        }
+        return false;
+    }
+
+    private static int FindSafeSpace(byte[] dol)
+    {
+        for (int i = 0; i <= dol.Length - 40; i += 4)
+        {
+            var s = dol.AsSpan(i, SafeSpacePatternA.Length);
+            if ((s.SequenceEqual(SafeSpacePatternA) || s.SequenceEqual(SafeSpacePatternB))
+                && BinaryPrimitives.ReadUInt32BigEndian(dol.AsSpan(i + 36, 4)) == 0x38000001)
+            {
+                return i + 36;
+            }
+        }
+        return -1;
+    }
+
+    /// <summary>Maps a file offset inside a DOL text/data section to its load address (0 if not in a section).</summary>
+    internal static uint FileOffsetToVirtual(byte[] dol, int fileOffset)
+    {
+        if (dol.Length < 0x100) return 0;
+        for (int s = 0; s < 18; s++)
+        {
+            uint off = BinaryPrimitives.ReadUInt32BigEndian(dol.AsSpan(0x00 + s * 4, 4));
+            uint addr = BinaryPrimitives.ReadUInt32BigEndian(dol.AsSpan(0x48 + s * 4, 4));
+            uint size = BinaryPrimitives.ReadUInt32BigEndian(dol.AsSpan(0x90 + s * 4, 4));
+            if (size == 0) continue;
+            if ((uint)fileOffset >= off && (uint)fileOffset < off + size)
+                return addr + ((uint)fileOffset - off);
+        }
+        return 0;
     }
 
     /// <summary>
