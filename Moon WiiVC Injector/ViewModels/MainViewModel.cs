@@ -311,7 +311,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // Video patches (ported from USB Loader GX), indices map to Core.DeflickerMode
-    private int _deflickerModeIndex;
+    private int _deflickerModeIndex = (int)Core.DeflickerMode.OffExtended; // default: OFF (Extended)
     public int DeflickerModeIndex
     {
         get => _deflickerModeIndex;
@@ -325,7 +325,7 @@ public partial class MainViewModel : ViewModelBase
         set => SetProperty(ref _removeDithering, value);
     }
 
-    private bool _framebufferWidth;
+    private bool _framebufferWidth = true; // default on (USB Loader GX "Video width: Framebuffer")
     public bool FramebufferWidth
     {
         get => _framebufferWidth;

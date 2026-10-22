@@ -156,10 +156,10 @@
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Deflicker filter:" VerticalAlignment="Center"/>
             <ComboBox Name="DeflickerMode" Width="260" SelectedIndex="{Binding DeflickerModeIndex}"
-                      ToolTip.Tip="Removes or weakens the vertical blur filter Wii games apply. OFF (Safe) is recommended; OFF (Extended) also blocks the game from re-enabling it but may break fades.">
+                      ToolTip.Tip="Removes or weakens the vertical blur filter Wii games apply. OFF (Extended) also blocks the game from re-enabling it (sharpest); if a game shows broken fades or brightness, use OFF (Safe).">
               <ComboBoxItem Content="Keep (unchanged)"/>
-              <ComboBoxItem Content="OFF (Safe) - recommended"/>
-              <ComboBoxItem Content="OFF (Extended)"/>
+              <ComboBoxItem Content="OFF (Safe)"/>
+              <ComboBoxItem Content="OFF (Extended) - recommended"/>
               <ComboBoxItem Content="ON (Low)"/>
               <ComboBoxItem Content="ON (Medium)"/>
               <ComboBoxItem Content="ON (High)"/>
