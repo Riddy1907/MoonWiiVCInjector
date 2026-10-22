@@ -88,7 +88,10 @@ public class BuildEngine(BuildOptions options, IProgress<(string Message, double
             {
                 Directory.CreateDirectory(outputPath);
             }
-            string logFilePath = Path.Combine(outputPath, "conversion.log");
+            // One log per game so consecutive builds don't overwrite each other's log
+            string gameName = SanitizeFilename(_options.PackedTitleLine1 ?? string.Empty).Trim();
+            string logFileName = string.IsNullOrEmpty(gameName) ? "conversion.log" : $"conversion_{gameName}.log";
+            string logFilePath = Path.Combine(outputPath, logFileName);
             await File.WriteAllLinesAsync(logFilePath, _logLines);
             Log($"Log saved successfully to: {logFilePath}");
         }
